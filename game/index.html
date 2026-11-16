@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMBERLINE — Foundry Yard</title>
+<style>
+  :root { --ch: 6px; --amber: #e8a33d; --teal: #2e8a8a; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #14181f;
+    font-family: 'Segoe UI', system-ui, sans-serif; color: #e8e2d4; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+  #crosshair span { position: absolute; background: var(--amber); box-shadow: 0 0 3px #000; }
+  #crosshair span:nth-child(1) { left: calc(-1px - var(--ch)); top: -7px; width: 2px; height: 7px; }
+  #crosshair span:nth-child(2) { left: calc(-1px - var(--ch)); top: 0; width: 2px; height: 7px; }
+  #crosshair span:nth-child(3) { left: calc(-7px - var(--ch)); top: -1px; width: 7px; height: 2px; }
+  #crosshair span:nth-child(4) { left: var(--ch); top: -1px; width: 7px; height: 2px; }
+  #crosshair i { position: absolute; left: -1.5px; top: -1.5px; width: 3px; height: 3px; background: var(--amber); border-radius: 50%; }
+  #topbar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; }
+  #score { font-size: 15px; letter-spacing: 2px; color: #cfc8b8; }
+  #score b { font-size: 26px; color: var(--amber); margin: 0 10px; }
+  #score b:last-child { color: var(--teal); }
+  #timer { font-size: 30px; font-weight: 700; color: #fff; text-shadow: 0 2px 6px #000; }
+  #round-label { font-size: 12px; letter-spacing: 3px; color: #9a938a; }
+  #health-wrap { position: absolute; left: 24px; bottom: 22px; width: 240px; height: 18px;
+    background: rgba(0,0,0,.55); border: 1px solid #555; }
+  #health-bar { height: 100%; width: 100%; background: var(--amber); transition: width .15s; }
+  #health-num { position: absolute; right: 6px; top: -1px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; }
+  #ammo { position: absolute; right: 26px; bottom: 20px; text-align: right; text-shadow: 0 2px 4px #000; }
+  #ammo-mag { font-size: 34px; font-weight: 700; color: #fff; }
+  #ammo-res { font-size: 16px; color: #b8b0a0; }
+  #weapon-name { font-size: 13px; letter-spacing: 2px; color: var(--amber); }
+  #money { position: absolute; right: 26px; bottom: 96px; font-size: 20px; font-weight: 700; color: #7dd87d; text-shadow: 0 2px 4px #000; }
+  #grenades { position: absolute; right: 26px; bottom: 126px; font-size: 14px; color: var(--amber); text-shadow: 0 2px 4px #000; }
+  #feed { position: absolute; right: 26px; top: 16px; text-align: right; font-size: 13px; color: #d8d2c4;
+    text-shadow: 0 1px 3px #000; line-height: 1.7; }
+  #banner { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font-size: 30px; font-weight: 800;
+    letter-spacing: 2px; color: #fff; text-shadow: 0 2px 10px #000, 0 0 24px rgba(232,163,61,.6);
+    transition: opacity .4s; white-space: nowrap; }
+  #hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); font-size: 11px;
+    color: #8a8478; letter-spacing: 1px; }
+  #damage { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(200,30,20,.55) 100%);
+    opacity: 0; transition: opacity .2s; }
+  #buy-menu { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 520px; z-index: 8;
+    background: rgba(16,20,26,.94); border: 1px solid var(--amber); padding: 22px 26px; display: none;
+    box-shadow: 0 0 40px rgba(0,0,0,.7); }
+  #buy-menu h2 { color: var(--amber); letter-spacing: 3px; margin-bottom: 6px; }
+  #buy-menu p { font-size: 13px; color: #b8b0a0; margin-bottom: 14px; }
+  .buy-row { padding: 9px 10px; border-bottom: 1px solid #333; font-size: 15px; }
+  .buy-row b { color: var(--amber); margin-right: 10px; }
+  .buy-row.owned { background: rgba(46,138,138,.25); }
+  .buy-row.poor { color: #777; }
+  #menu, #over { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; background: linear-gradient(180deg, rgba(20,16,10,.88), rgba(10,24,28,.92)); text-align: center; }
+  #over { display: none; }
+  #menu h1, #over h1 { font-size: 64px; letter-spacing: 10px; color: var(--amber);
+    text-shadow: 0 0 30px rgba(232,163,61,.5); }
+  #menu .tag { font-size: 18px; color: #d8d2c4; margin: 10px 0 4px; }
+  #menu p { max-width: 560px; line-height: 1.6; color: #b8b0a0; }
+  #menu .controls { margin-top: 16px; font-size: 13px; color: #8fd0d0; }
+  #menu .small { margin-top: 18px; font-size: 12px; color: #777; }
+  #menu button, #over button { margin-top: 26px; padding: 14px 42px; font-size: 18px; letter-spacing: 3px;
+    font-weight: 700; color: #14100a; background: var(--amber); border: none; cursor: pointer; }
+  #menu button:hover, #over button:hover { background: #f5b95a; }
+  #over p { font-size: 22px; color: #d8d2c4; margin-top: 10px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./three.module.min.js" } }
+</script>
+</head>
+<body>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
